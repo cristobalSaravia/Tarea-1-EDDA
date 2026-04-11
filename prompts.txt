@@ -1,0 +1,39 @@
+Gemeni
+prompt:
+i think i forgot some details, i have a number x, and k is the position of the most significant bit of x, i want to get the first floor(k/2) bits after the most significant bit as a number and the last ceil(k/2) as a number.
+respuesta: 
+#include <iostream>
+#include <bit> // Required for std::bit_width
+
+int main() {
+    uint64_t x = 0b11011010; // MSB is at index 7, so k = 7
+    
+    if (x == 0) return 0;
+
+    // 1. Find k (the position of the MSB)
+    // std::bit_width returns the number of bits needed to represent x.
+    // k is bit_width - 1.
+    int k = std::bit_width(x) - 1;
+
+    // 2. Calculate split sizes
+    int high_count = k / 2;              // floor(k/2)
+    int low_count = (k + 1) / 2;         // ceil(k/2)
+
+    // 3. Extract Low Part
+    // Mask the last 'low_count' bits
+    uint64_t low_mask = (1ULL << low_count) - 1;
+    uint64_t low_part = x & low_mask;
+
+    // 4. Extract High Part
+    // Shift right to remove low bits, then mask to remove the MSB itself
+    uint64_t high_part = (x >> low_count) & ((1ULL << high_count) - 1);
+
+    // Results for x = 218 (1 101 1010)
+    // k = 7. High = floor(3.5) = 3 bits. Low = ceil(3.5) = 4 bits.
+    std::cout << "Original:  " << x << " (MSB at index " << k << ")" << std::endl;
+    std::cout << "High Part (next " << high_count << " bits): " << high_part << std::endl;
+    std::cout << "Low Part (last " << low_count << " bits): " << low_part << std::endl;
+
+    return 0;
+}
+
