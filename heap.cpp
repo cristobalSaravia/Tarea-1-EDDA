@@ -57,11 +57,11 @@ static size_t get_index_block_index(size_t index, size_t superblock_index) {
 
     if (superblock_index % 2 == 0){
         int m = superblock_index / 2;
-        base_offset = std::pow(2, m + 1)-2;
+        base_offset = (1ULL << (m + 1)) - 2;
     }
     else {
         int m = (superblock_index - 1) / 2;
-        base_offset = 3*std::pow(2, m) - 2; 
+        base_offset = (3 * (1ULL << m)) - 2;
     }
        
     int high_count = superblock_index / 2;              
@@ -117,11 +117,21 @@ static int index_array_resize(heap_t *h, size_t new_capacity) {
 }
 
 static int index_array_increase_size(heap_t *h) {
-    if (h->index_array == nullptr) {
-        index_array_resize(h, h->index_array_capacity);
-        return 0;
+    heap_key_t **old_index_array = h->index_array;
+
+    h->index_array = h->shadow_index_array;
+    
+    h->index_array_capacity *= 2;
+
+    h->shadow_index_array = (heap_key_t**)malloc(2 * h->index_array_capacity * sizeof(heap_key_t*));
+
+    for (size_t i = 0; i < 2 * h->index_array_capacity; i++) {
+        h->shadow_index_array[i] = nullptr;
     }
-    index_array_resize(h, h->index_array_capacity * 2);
+
+    h->copy_index = 0; 
+    
+    if (old_index_array != nullptr) free(old_index_array);
     return 0;
 }
 
@@ -146,6 +156,15 @@ static int new_data_block(heap_t *h) {
 
     h->index_array[h->index_array_tail] = (heap_key_t*)malloc(h->current_data_block_size * sizeof(heap_key_t));
     
+    if (h->index_array_capacity == 1){
+        h->shadow_index_array[h->index_array_tail] = h->index_array[h->index_array_tail];
+    }
+    else{
+        h->shadow_index_array[h->copy_index] = h->index_array[h->copy_index];
+        h->shadow_index_array[h->copy_index + 1] = h->index_array[h->copy_index + 1];
+        h->copy_index += 2;
+    }
+
     h->index_array_tail++;
     h->remaining_data_blocks_in_super_block--;
     h->current_datablock_count = 0;
@@ -201,6 +220,9 @@ void heap_destroy(heap_t *h) {
     if (h->data != nullptr) {
         free(h->data);
     }
+
+    free(h->shadow_index_array);
+
 
     delete h;
 }
